@@ -30,7 +30,6 @@ export default function SolarSystemMap({ onSelect, selectedId }: Props) {
   const scale = useRef(1);
   const [, rerender] = useState(0);
 
-  const drag = useRef({ active: false, sx: 0, sy: 0, px: 0, py: 0 });
   const moved = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -80,23 +79,30 @@ export default function SolarSystemMap({ onSelect, selectedId }: Props) {
       style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
-        e.currentTarget.setPointerCapture(e.pointerId);
-        drag.current = { active: true, sx: e.clientX, sy: e.clientY, px: panX, py: panY };
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startPanX = ox.current;
+        const startPanY = oy.current;
         moved.current = false;
         setIsDragging(true);
-      }}
-      onPointerMove={(e) => {
-        if (!drag.current.active) return;
-        const dx = e.clientX - drag.current.sx;
-        const dy = e.clientY - drag.current.sy;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved.current = true;
-        ox.current = drag.current.px + dx;
-        oy.current = drag.current.py + dy;
-        commit();
-      }}
-      onPointerUp={() => {
-        drag.current.active = false;
-        setIsDragging(false);
+
+        const handleMove = (ev: PointerEvent) => {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved.current = true;
+          ox.current = startPanX + dx;
+          oy.current = startPanY + dy;
+          commit();
+        };
+
+        const handleUp = () => {
+          setIsDragging(false);
+          window.removeEventListener('pointermove', handleMove);
+          window.removeEventListener('pointerup', handleUp);
+        };
+
+        window.addEventListener('pointermove', handleMove);
+        window.addEventListener('pointerup', handleUp);
       }}
       onClick={(e) => {
         if (moved.current) return;
